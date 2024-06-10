@@ -18,41 +18,39 @@ const CreateProductPage = () => {
   const router = useRouter();
 
   const mutation = useMutation(createProduct, {
-    onSuccess: async (data) => {
-      setIsLoading(false);
+    onSuccess: async () => {
+      setIsLoading(false); 
       setIsSuccess(true);
       queryClient.invalidateQueries('products');
       setTimeout(() => {
         router.push('/');
-      }, 2000);
+      }, 2000); 
     },
     onError: (error) => {
       console.error('Error creating product:', error);
       setErrorMessage('Failed to create product. Please try again.');
-      setIsLoading(false);
+      setIsLoading(false); 
     },
   });
 
   const handleImageUpload = async (): Promise<string[]> => {
     if (!images) return [];
-    const imageUrls: string[] = [];
-    for (let i = 0; i < images.length; i++) {
+    const uploadPromises = Array.from(images).map(async (image) => {
       const formData = new FormData();
-      formData.append('file', images[i]);
+      formData.append('file', image);
       try {
         const response = await axios.post('https://api.escuelajs.co/api/v1/files/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-        imageUrls.push(response.data.location);
+        return response.data.location;
       } catch (error) {
         console.error('Error uploading image:', error);
-        setErrorMessage('Failed to upload image. Please try again.');
         throw error;
       }
-    }
-    return imageUrls;
+    });
+    return Promise.all(uploadPromises);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,10 +59,12 @@ const CreateProductPage = () => {
     setErrorMessage('');
     try {
       const imageUrls = await handleImageUpload();
+      console.log('Image URLs:', imageUrls);
       mutation.mutate({ title, description, price: Number(price), categoryId: 1, images: imageUrls });
     } catch (error) {
-      console.error('Error during submit:', error);
-      setIsLoading(false);
+      console.error('Error during submit:', error); 
+      setErrorMessage('Failed to upload images. Please try again.');
+      setIsLoading(false); 
     }
   };
 
